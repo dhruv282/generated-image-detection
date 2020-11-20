@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 import sys
+import os
 from torchvision import transforms
 from torch import nn
+import torch.nn.functional as F
 from PIL import Image
 import cv2
 
@@ -167,3 +169,23 @@ def processImage(imagePath, cuda=True):
 	if cuda:
 		processedImg = processedImg.cuda()
 	return processedImg
+
+
+def trainModel(model, datasetPath):
+	if datasetPath[-1] != '/':
+		datasetPath += '/'
+	for sequences in os.listdir(datasetPath):
+		if 'sequences' in sequences:
+			for faceTools in os.listdir(datasetPath+sequences):
+				for image in os.listdir(datasetPath+sequences+'/'+faceTools+'/c23/images/'):
+					imagePath = datasetPath+sequences+'/'+faceTools+'/c23/images/'+video
+					img = processedImg(imagePath)
+					outputs = model(img)
+					
+
+def main():
+	model = Xception()
+	
+
+if __name__ == "__main__":
+	main()
