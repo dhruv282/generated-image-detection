@@ -165,7 +165,7 @@ def processImage(imagePath, cuda=True):
 			transforms.ToTensor(),
 			transforms.Normalize([0.5]*3, [0.5]*3)
 		])
-	processedImg = process(Image.fromarray(image))
+	processedImg = process(Image.fromarray(img))
 	processedImg = processedImg.unsqueeze(0)
 	if cuda:
 		processedImg = processedImg.cuda()
@@ -190,18 +190,20 @@ def trainModel(model, datasetPath):
 
 					for imagePath in os.listdir(imagesDir):
 						imagePath = imagesDir + imagePath
-						img = processImg(imagePath)
+						img = processImage(imagePath)
 						outputs = model(img)
+						print(outputs)
 
 						# delete image
 						os.remove(imagePath)
-						
+
 					# delete empty directory
 					os.rmdir(imagesDir)
 					
 
 def main():
 	model = Xception()
+	trainModel(model, 'dataset/')
 	
 
 if __name__ == "__main__":
