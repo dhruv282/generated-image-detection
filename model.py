@@ -6,6 +6,7 @@ from torch import nn
 import torch.nn.functional as F
 from PIL import Image
 import cv2
+from videoToImages import convertVideoToImages
 
 
 class SeparableConv2d(nn.Module):
@@ -177,10 +178,26 @@ def trainModel(model, datasetPath):
 	for sequences in os.listdir(datasetPath):
 		if 'sequences' in sequences:
 			for faceTools in os.listdir(datasetPath+sequences):
-				for image in os.listdir(datasetPath+sequences+'/'+faceTools+'/c23/images/'):
-					imagePath = datasetPath+sequences+'/'+faceTools+'/c23/images/'+video
-					img = processedImg(imagePath)
-					outputs = model(img)
+				for video in os.listdir(datasetPath+sequences+'/'+faceTools+'/c23/videos/'):
+					videoPath = datasetPath+sequences+'/'+faceTools+'/c23/videos/'+video
+					
+					imagesDir = videoPath.replace('videos', 'images')
+					imagesDir = imagesDir.replace('.mp4', '/')
+
+					if not os.path.exists(imagesDir):
+						os.makedirs(imagesDir)
+						convertVideoToImages(videoPath, imagesDir)
+
+					for imagePath in os.listdir(imagesDir):
+						imagePath = imagesDir + imagePath
+						img = processImg(imagePath)
+						outputs = model(img)
+
+						# delete image
+						os.remove(imagePath)
+						
+					# delete empty directory
+					os.rmdir(imagesDir)
 					
 
 def main():
