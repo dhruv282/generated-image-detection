@@ -172,11 +172,11 @@ def processImage(imagePath, cuda=True):
 	return processedImg
 
 
-def trainModel(model, datasetPath):
+def trainModel(model, datasetPath, faceForensics=False, personDoesNotExist=False, catDoesNotExist=False):
 	if datasetPath[-1] != '/':
 		datasetPath += '/'
 	for sequences in os.listdir(datasetPath):
-		if 'sequences' in sequences:
+		if faceForensics and 'sequences' in sequences:
 			for faceTools in os.listdir(datasetPath+sequences):
 				for video in os.listdir(datasetPath+sequences+'/'+faceTools+'/c23/videos/'):
 					videoPath = datasetPath+sequences+'/'+faceTools+'/c23/videos/'+video
@@ -199,12 +199,39 @@ def trainModel(model, datasetPath):
 
 					# delete empty directory
 					os.rmdir(imagesDir)
-					sys.exit()
+		elif personDoesNotExist and 'thispersondoesnotexist' in sequences:
+			for image in os.listdir(datasetPath+sequences):
+				imagePath = datasetPath+sequences+'/'+image
+				img = processImage(imagePath)
+				outputs = model(img)
+				print(outputs)
+		elif catDoesNotExist and 'thiscatdoesnotexist' in sequences:
+			for image in os.listdir(datasetPath+sequences):
+				imagePath = datasetPath+sequences+'/'+image
+				img = processImage(imagePath)
+				outputs = model(img)
+				print(outputs)
+
+		# save model
+		modelPath = ''
+		if faceForensics:
+			modelPath += 'faceForensics'
+		if personDoesNotExist:
+			if modelPath == '':
+				modelPath += '_'
+			modelPath += 'personDoesNotExist'
+		if catDoesNotExist:
+			if modelPath == '':
+				modelPath += '_'
+			modelPath += 'catDoesNotExist'
+		modelPath += '_model.pth'
+
+		torch.save(model.state_dict(), modelPath)
 					
 
 def main():
 	model = Xception()
-	trainModel(model, 'dataset/')
+	trainModel(model, 'dataset/', faceForensics=True)
 	
 
 if __name__ == "__main__":
