@@ -4,6 +4,7 @@ import os
 from torchvision import transforms
 from torch import nn
 import torch.nn.functional as F
+import torch
 from PIL import Image
 import cv2
 from videoToImages import convertVideoToImages
