@@ -156,7 +156,7 @@ class Xception(nn.Module):
         return x
 
 
-def processImage(imagePath, cuda=True):
+def processImage(imagePath):
 	print("...processing image")
 	print("Image: "+imagePath)
 	
@@ -168,7 +168,7 @@ def processImage(imagePath, cuda=True):
 		])
 	processedImg = process(Image.fromarray(img))
 	processedImg = processedImg.unsqueeze(0)
-	if cuda:
+	if torch.cuda.is_available():
 		processedImg = processedImg.cuda()
 	return processedImg
 
@@ -232,6 +232,8 @@ def trainModel(model, datasetPath, faceForensics=False, personDoesNotExist=False
 
 def main():
 	model = Xception()
+	if torch.cuda.is_available():
+		model.cuda()
 	trainModel(model, 'dataset/', faceForensics=True)
 	
 
