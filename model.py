@@ -76,7 +76,7 @@ class Block(nn.Module):
 
 
 class Xception(nn.Module):
-    def __init__(self, num_classes=1000):
+    def __init__(self, num_classes=2):
         super(Xception, self).__init__()
         self.num_classes = num_classes
 
@@ -228,13 +228,30 @@ def trainModel(model, datasetPath, faceForensics=False, personDoesNotExist=False
 		modelPath += '_model.pth'
 
 		torch.save(model.state_dict(), modelPath)
-					
+
+
+def predict(model, imagePath):
+	img = processImage(imagePath)
+	output = model(img)
+
+	prob,ind = torch.max(output, 1)
+	pred = int(ind.cpu().numpy())
+	return prob,pred
+
 
 def main():
 	model = Xception()
 	if torch.cuda.is_available():
 		model.cuda()
-	trainModel(model, 'dataset/', faceForensics=True)
+	#trainModel(model, 'dataset/', faceForensics=True)
+
+	model.load_state_dict(torch.load('faceForensics_model.pth'))
+	prob,pred = predict(model, '11.jpeg')
+
+	label = 'fake' if pred == 1 else 'real'
+
+	print('Image is '+label)
+	print('Probability: '+str(prob))
 	
 
 if __name__ == "__main__":
