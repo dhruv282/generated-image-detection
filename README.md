@@ -22,4 +22,17 @@ We collected our own dataset of GAN generated images by downloading 200 images f
 
 To accurately test these GAN images against real images, we used an additional dataset of real images that were cropped in a similar fashion to the GAN images. The dataset is from [kaggle.com](https://www.kaggle.com/ciplab/real-and-fake-face-detection).
 
-## Using the Pre-trained Model
+## Usage
+
+### Included Files
+
+* `faceforensics-download.py`
+  * Script provided to download videos from the FaceForensics++ dataset. Documentation can be found on the [FaceForensics Dataset GitHub repo](https://github.com/ondyari/FaceForensics/tree/master/dataset).
+* `fetchGeneratedImages.py`
+  * Script to download images from [thispersondoesnotexist.com](https://thispersondoesnotexist.com/). To run this script, run `python3 fetchGeneratedImages.py`. The script is setup to download 200 images and store them in a folder named `dataset`.
+* `videoToImages.py`
+  * The code in this file is intended to be called by `model.py` so that the video that is currently being evaluated can be converted into images.
+* `model.py`
+  * This is the actual XceptionNet model. Instructions can be found under [Using the Pre-trained Model](#using-the-pre-trained-model)
+
+### Using the Pre-trained Model
