@@ -27,7 +27,7 @@ To accurately test these GAN images against real images, we used an additional d
 ### Included Files
 
 * `faceforensics-download.py`
-  * Script provided to download videos from the FaceForensics++ dataset. Documentation can be found on the [FaceForensics Dataset GitHub repo](https://github.com/ondyari/FaceForensics/tree/master/dataset).
+  * Script provided to download videos from the FaceForensics++ dataset. Documentation can be found on the [FaceForensics Dataset GitHub repo](https://github.com/ondyari/FaceForensics/tree/master/dataset#1-download-script).
 * `fetchGeneratedImages.py`
   * Script to download images from [thispersondoesnotexist.com](https://thispersondoesnotexist.com/). To run this script, run `python3 fetchGeneratedImages.py`. The script is setup to download 200 images and store them in a folder named `dataset`.
 * `videoToImages.py`
