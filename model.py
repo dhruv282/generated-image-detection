@@ -109,7 +109,9 @@ class Xception(nn.Module):
         self.conv4 = SeparableConv2d(1536,2048,3,1,1)
         self.bn4 = nn.BatchNorm2d(2048)
 
-        self.last_linear = nn.Linear(2048, num_classes)
+        self.fc = nn.Linear(2048, 1000)
+        self.last_linear = nn.Linear(1000, num_classes)
+
 
 
     def features(self, input):
