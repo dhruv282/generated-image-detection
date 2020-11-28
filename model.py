@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import torch
 from PIL import Image
 import cv2
+import dlib
 from videoToImages import convertVideoToImages
 
 
@@ -109,8 +110,7 @@ class Xception(nn.Module):
         self.conv4 = SeparableConv2d(1536,2048,3,1,1)
         self.bn4 = nn.BatchNorm2d(2048)
 
-        self.fc = nn.Linear(2048, 1000)
-        self.last_linear = nn.Linear(1000, num_classes)
+        self.last_linear = nn.Linear(2048, num_classes)
 
 
 
@@ -157,12 +157,39 @@ class Xception(nn.Module):
         x = self.logits(x)
         return x
 
+def getFaceCrop(image):
+	detector = dlib.get_frontal_face_detector()
+	faces = detector(image, 1)
+	if len(faces) > 0:
+		face = faces[0]
+		height, width = image.shape[:2]
+
+		scale = 1.3
+		x1 = face.left()
+		y1 = face.top()
+		x2 = face.right()
+		y2 = face.bottom()
+
+		size = int(max(x2 - x1, y2 - y1) * scale)
+		center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
+
+		x = max(int(center_x - size // 2), 0)
+		y = max(int(center_y - size // 2), 0)
+
+		size = min(width - x, size)
+		size = min(height - y, size)
+
+		croppedFace = image[y:y+size, x:x+size]
+
+		return croppedFace
+
 
 def processImage(imagePath):
 	print("...processing image")
 	print("Image: "+imagePath)
 	
 	img = cv2.imread(imagePath)
+	img = getFaceCrop(img)
 	process = transforms.Compose([
 			transforms.Resize((299, 299)),
 			transforms.ToTensor(),
@@ -176,6 +203,10 @@ def processImage(imagePath):
 
 
 def trainModel(model, datasetPath, faceForensics=False, personDoesNotExist=False, catDoesNotExist=False):
+	# make all layers trainable
+	for i, param in model.named_parameters():
+		param.requires_grad = True
+
 	if datasetPath[-1] != '/':
 		datasetPath += '/'
 	for sequences in os.listdir(datasetPath):
@@ -254,7 +285,7 @@ def loadModel(modelPath):
 	return model
 
 def main():
-	'''
+	
 	model = Xception()
 	if torch.cuda.is_available():
 		model.cuda()
@@ -268,7 +299,7 @@ def main():
 
 	print('Image is '+label)
 	print('Probability: '+str(prob))
-	
+	'''
 
 if __name__ == "__main__":
 	main()
