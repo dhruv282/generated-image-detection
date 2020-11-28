@@ -241,13 +241,27 @@ def predict(model, imagePath):
 	return prob,pred
 
 
+def loadModel(modelPath):
+	model = Xception()
+
+	device = 'cpu'
+	if torch.cuda.is_available():
+		model.cuda()
+		device = 'cuda:0'
+
+	model.load_state_dict(torch.load(modelPath, torch.device(device)))
+	
+	return model
+
 def main():
+	'''
 	model = Xception()
 	if torch.cuda.is_available():
 		model.cuda()
-	#trainModel(model, 'dataset/', faceForensics=True)
+	trainModel(model, 'dataset/', faceForensics=True)
+	'''
 
-	model.load_state_dict(torch.load('faceForensics_model.pth'))
+	model = loadModel('faceForensics_model.pth')
 	prob,pred = predict(model, '11.jpeg')
 
 	label = 'fake' if pred == 1 else 'real'
