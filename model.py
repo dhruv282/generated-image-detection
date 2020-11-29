@@ -6,6 +6,7 @@ from torchvision import transforms
 from torch.autograd import Variable
 from torch import nn
 import torch.nn.functional as F
+import torchvision.models as models
 import torch
 from PIL import Image
 import cv2
@@ -312,7 +313,7 @@ def saveModel(model, data):
 		modelPath = 'faceForensics'
 	elif data == 'GAN':
 		modelPath += 'GAN'
-	modelPath += '_model.pth'
+	modelPath += '_'+model.__class__.__name__+'.pth'
 
 	torch.save(model.state_dict(), modelPath)
 	print('Model successfully saved!\n\n')
@@ -322,7 +323,7 @@ def predict(model, imagePath, postFunc=nn.Softmax(dim=1)):
 	img = processImages([imagePath])
 	output = model(img)
 	output = postFunc(output)
-	print(output)
+	#print(output)
 
 	prob,ind = torch.max(output, 1)
 	pred = int(ind.cpu().numpy())
@@ -389,35 +390,56 @@ def testModel(model, filePath, tag, threshold=0.5):
 			label = 'fake' if pred == 1 else 'real'
 			if pred == tag:
 				correct += 1
-			print(output.cpu().data.numpy())
+			#print(label)
 			fakeProb = output.cpu().data.numpy()[0][1]
-			if fakeProb >= threshold:
+			if fakeProb > threshold:
 				prob.append(fakeProb)
 		shutil.rmtree(imagesDir)
 		print('Correct: '+str(correct)+'/'+str(total))
-		return (sum(prob)/len(prob)) > threshold
+		if len(prob) > 0:
+			acc = sum(prob)/len(prob)
+		else:
+			acc = 0
+		return acc > threshold
 
 	elif filePath.endswith('.jpg') or filePath.endswith('.png') or filePath.endswith('jpeg'):
 		output, pred = predict(model, filePath)
 		label = 'fake' if pred == 1 else 'real'
 		print('Model Evaluation: '+label)
-		return output.cpu().data.numpy()[0][1] >= threshold
+		return output.cpu().data.numpy()[0][1] > threshold
 
+
+def getResnetModel(modelPath=None):
+	model = models.resnet18()
+	inFeatures = model.fc.in_features
+	model.fc = nn.Linear(inFeatures, 2)
+
+	device = 'cpu'
+	if torch.cuda.is_available():
+		model.cuda()
+		device = 'cuda:0'
+	
+	if modelPath:
+		model.load_state_dict(torch.load(modelPath, torch.device(device)))
+	return model
 
 def main():
 	
 	dataset = 'faceForensics'
-	bSize = 10
-	model = Xception()
+	bSize = 5
+	#model = Xception()
+	model = getResnetModel()
 	if torch.cuda.is_available():
 		model.cuda()
 	filePaths, tags = getDataset('dataset/', data=dataset)
 	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.001, epochs=1, data=dataset)
 	'''
 
-	model = loadModel('faceForensics_model.pth')
+	#model = loadModel('faceForensics_model.pth')
+	model = getResnetModel()
 
 	testModel(model, 'fake.mp4', 1)
+	print('\n\n\n')
 	testModel(model, 'real.mp4', 0)
 	'''
 	
