@@ -221,47 +221,57 @@ def createBatch(dataList, batchSize):
 	for i in range(0, len(dataList), batchSize):
 		yield dataList[i:i+batchSize]
 
-def trainModel(model, batch, targets, optimizer, loss):
+def trainModel(model, batch, targets, optimizer, loss, postFunc=nn.Softmax(dim=1)):
 	img = processImages(batch)
 	output = model(img)
+	#output = postFunc(output)
+	print(output)
 
-	prob,_ = torch.max(output, 1)
+	prob,pred = torch.max(output, 1)
+	pred = torch.LongTensor([int(t.cpu().numpy()) for t in pred])
 
 	targets = torch.LongTensor(targets)
 	if torch.cuda.is_available():
 		targets = targets.cuda()
+	print(targets)
 
+	optimizer.zero_grad()
 	lossVal = loss(output,targets)
 	lossVal.backward()
 	optimizer.step()
 
 	print('Loss: '+str(lossVal.item()))
 	print('\n')
+	return model
 
-def trainFullNetwork(model, filePaths, tags, batchSize, lr, epochs, data):
-
-	# create batch for GAN images
-	if data == 'GAN':
-		filePaths = list(createBatch(filePaths, batchSize))
-		tags = list(createBatch(tags, batchSize))
-
+def trainFullNetwork(model, allFilePaths, allTags, batchSize, lr, epochs, data):
+	model.train()
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 	loss = torch.nn.CrossEntropyLoss()
 	if torch.cuda.is_available():
 		loss = loss.cuda()
 
 	for epoch in range(epochs):
+		# shuffle data
+		temp = list(zip(allFilePaths, allTags))
+		shuffle(temp)
+		allFilePaths, allTags = zip(*temp)		
+
 		print('Epoch: '+str(epoch))
 		if data == 'GAN':
+
+			filePaths = list(createBatch(allFilePaths, batchSize))
+			tags = list(createBatch(allTags, batchSize))
+
 			for i in range(len(filePaths)):
 				batch = filePaths[i]
 				tagBatch = tags[i]
 
-				trainModel(model, batch, tagBatch, optimizer, loss)
+				model = trainModel(model, batch, tagBatch, optimizer, loss)
 		elif data == 'faceForensics':
-			for i in range(len(filePaths)):
-				path = filePaths[i]
-				target = tags[i]
+			for i in range(len(allFilePaths)):
+				path = allFilePaths[i]
+				target = allTags[i]
 
 				imagesDir = 'tempTrainingImages/'
 
@@ -283,7 +293,7 @@ def trainFullNetwork(model, filePaths, tags, batchSize, lr, epochs, data):
 					batch = batches[i]
 					tagBatch = targets[i]
 
-					trainModel(model, batch, tagBatch, optimizer, loss)
+					model = trainModel(model, batch, tagBatch, optimizer, loss)
 
 				# delete images
 				shutil.rmtree(imagesDir)
@@ -307,7 +317,7 @@ def saveModel(model, data):
 def predict(model, imagePath, postFunc=nn.Softmax(dim=1)):
 	img = processImages([imagePath])
 	output = model(img)
-	#output = postFunc(output)
+	output = postFunc(output)
 	print(output)
 
 	prob,ind = torch.max(output, 1)
@@ -360,57 +370,55 @@ def getDataset(datasetPath, data):
 
 	return filePaths, tags
 
+
+def testModel(model, filePath, tag, threshold=0.5):
+	model.eval()
+	if filePath.endswith('.mp4') or filePath.endswith('.avi'):
+		imageDir = 'tempTestingImages'
+		if not os.path.exists(imagesDir):
+			os.makedirs(imagesDir)
+		convertVideoToImages(path, imagesDir)
+		correct = 0
+		total = len(os.listdir(imagesDir))
+		prob = 0
+		for imagePath in os.listdir(imagesDir):
+			imagePath = imagesDir + imagePath
+			output, pred = predict(model, imagePath)
+			os.remove(img)
+			label = 'fake' if pred == 1 else 'real'
+			if label == tag:
+				correct += 1
+			
+			fakeProb = float([out.cpu().numpy() for out in output][1])
+			if fakeProb >= threshold:
+				prob.append(fakeProb)
+		print('Correct: '+str(correct)+''+str(total))
+		return (sum(prob)/len(prob)) > threshold
+
+	elif filePath.endswith('.jpg') or filePath.endswith('.png') or filePath.endswith('jpeg'):
+		output, pred = predict(model, filePath)
+		label = 'fake' if pred == 1 else 'real'
+		print('Model Evaluation: '+label)
+		return float([out.cpu().numpy() for out in output][1]) >= threshold
+
+
 def main():
-	'''
-	dataset = 'faceForensics'
+	
+	dataset = 'GAN'
 	bSize = 10
 	model = Xception()
 	if torch.cuda.is_available():
 		model.cuda()
 	filePaths, tags = getDataset('dataset/', data=dataset)
-	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.05, epochs=3, data=dataset)
+	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.001, epochs=3, data=dataset)
 	'''
 
-	convertVideoToImages('fake.mp4', 'fake/')
-	convertVideoToImages('real.mp4', 'real/')
 	model = loadModel('faceForensics_model.pth')
 
-	correct = 0
-	total = len(os.listdir('fake/'))
-	for img in os.listdir('fake/'):
-		img = 'fake/'+img
-		prob,pred = predict(model, img)
-		os.remove(img)
-
-		label = 'fake' if pred == 1 else 'real'
-
-		print('Image is '+label)
-		print('Probability: '+str(prob))
-		if label == 'fake':
-			correct+=1
-
-	print('Fake')
-	print(str(correct)+'/'+str(total))
-	print(correct/total)
-	print('\n\n')
-
-	correct = 0
-	total = len(os.listdir('real/'))
-	for img in os.listdir('real/'):
-		img = 'real/'+img
-		prob,pred = predict(model, img)
-		os.remove(img)
-
-		label = 'fake' if pred == 1 else 'real'
-
-		print('Image is '+label)
-		print('Probability: '+str(prob))
-		if label == 'real':
-			correct+=1
-
-	print('Real')
-	print(str(correct)+'/'+str(total))
-	print(correct/total)
+	testModel(model, 'fake.mp4', 1)
+	testModel(model, 'real.mp4', 0)
+	'''
+	
 	
 
 if __name__ == "__main__":
