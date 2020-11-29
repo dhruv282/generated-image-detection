@@ -206,6 +206,7 @@ def getOutput(model, imagePath, postFunc=nn.Softmax(dim=1)):
 	img = processImage(imagePath)
 	output = model(img)
 	output = postFunc(output)
+	print(output)
 
 	prob,ind = torch.max(output, 1)
 	pred = int(ind.cpu().numpy())
@@ -216,12 +217,12 @@ def trainFullNetwork(model, datasetPath, lr, epochs, faceForensics=False, person
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 	loss = torch.nn.CrossEntropyLoss()
 	if torch.cuda.is_available():
-		loss.cuda()
+		loss = loss.cuda()
 
 	if datasetPath[-1] != '/':
 		datasetPath += '/'
 
-	for epoch in epochs:
+	for epoch in range(epochs):
 		for sequences in os.listdir(datasetPath):
 			if faceForensics and 'sequences' in sequences:
 				for faceTools in os.listdir(datasetPath+sequences):
@@ -243,7 +244,7 @@ def trainFullNetwork(model, datasetPath, lr, epochs, faceForensics=False, person
 							target = torch.LongTensor([target])
 
 							if torch.cuda.is_available():
-								target.cuda()
+								target = target.cuda()
 							
 							lossVal = loss(output,target)
 							lossVal.backward()
@@ -267,7 +268,7 @@ def trainFullNetwork(model, datasetPath, lr, epochs, faceForensics=False, person
 					target = torch.LongTensor([target])
 
 					if torch.cuda.is_available():
-						target.cuda()
+						target = target.cuda()
 					
 					lossVal = loss(output,target)
 					lossVal.backward()
@@ -285,7 +286,7 @@ def trainFullNetwork(model, datasetPath, lr, epochs, faceForensics=False, person
 					target = torch.LongTensor([target])
 
 					if torch.cuda.is_available():
-						target.cuda()
+						target = target.cuda()
 					
 					lossVal = loss(output,target)
 					lossVal.backward()
@@ -326,17 +327,10 @@ def loadModel(modelPath):
 		device = 'cuda:0'
 
 	model.load_state_dict(torch.load(modelPath, torch.device(device)))
-	model.last_linear = model.fc
-	del model.fc
-	num_ftrs = model.last_linear.in_features
-	model.last_linear = nn.Sequential(
-					nn.Dropout(p=dropout),
-					nn.Linear(num_ftrs, 2)
-	)
 	return model
 
 def main():
-	
+	'''
 	model = Xception()
 	if torch.cuda.is_available():
 		model.cuda()
@@ -383,7 +377,7 @@ def main():
 	print('Real')
 	print(str(correct)+'/'+str(total))
 	print(correct/total)
-	'''
+	
 
 if __name__ == "__main__":
 	main()
