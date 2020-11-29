@@ -217,6 +217,12 @@ def processImages(imagePaths):
 	return images
 
 
+def shuffleData(data, tag):
+	temp = list(zip(data, tag))
+	shuffle(temp)
+	data, tag = zip(*temp)
+	return list(data), list(tag)
+
 def createBatch(dataList, batchSize):
 	for i in range(0, len(dataList), batchSize):
 		yield dataList[i:i+batchSize]
@@ -224,7 +230,7 @@ def createBatch(dataList, batchSize):
 def trainModel(model, batch, targets, optimizer, loss, postFunc=nn.Softmax(dim=1)):
 	img = processImages(batch)
 	output = model(img)
-	#output = postFunc(output)
+	output = postFunc(output)
 	print(output)
 
 	prob,pred = torch.max(output, 1)
@@ -253,9 +259,7 @@ def trainFullNetwork(model, allFilePaths, allTags, batchSize, lr, epochs, data):
 
 	for epoch in range(epochs):
 		# shuffle data
-		temp = list(zip(allFilePaths, allTags))
-		shuffle(temp)
-		allFilePaths, allTags = zip(*temp)		
+		allFilePaths, allTags = shuffleData(allFilePaths, allTags)		
 
 		print('Epoch: '+str(epoch))
 		if data == 'GAN':
@@ -364,9 +368,7 @@ def getDataset(datasetPath, data):
 						tags.append(1)
 	
 	# shuffle data
-	temp = list(zip(filePaths, tags))
-	shuffle(temp)
-	filePaths, tags = zip(*temp)
+	filePaths, tags = shuffleData(filePaths, tags)
 
 	return filePaths, tags
 
@@ -374,43 +376,43 @@ def getDataset(datasetPath, data):
 def testModel(model, filePath, tag, threshold=0.5):
 	model.eval()
 	if filePath.endswith('.mp4') or filePath.endswith('.avi'):
-		imageDir = 'tempTestingImages'
+		imagesDir = 'tempTestingImages/'
 		if not os.path.exists(imagesDir):
 			os.makedirs(imagesDir)
-		convertVideoToImages(path, imagesDir)
+		convertVideoToImages(filePath, imagesDir)
 		correct = 0
 		total = len(os.listdir(imagesDir))
-		prob = 0
+		prob = []
 		for imagePath in os.listdir(imagesDir):
 			imagePath = imagesDir + imagePath
 			output, pred = predict(model, imagePath)
-			os.remove(img)
 			label = 'fake' if pred == 1 else 'real'
-			if label == tag:
+			if pred == tag:
 				correct += 1
-			
-			fakeProb = float([out.cpu().numpy() for out in output][1])
+			print(output.cpu().data.numpy())
+			fakeProb = output.cpu().data.numpy()[0][1]
 			if fakeProb >= threshold:
 				prob.append(fakeProb)
-		print('Correct: '+str(correct)+''+str(total))
+		shutil.rmtree(imagesDir)
+		print('Correct: '+str(correct)+'/'+str(total))
 		return (sum(prob)/len(prob)) > threshold
 
 	elif filePath.endswith('.jpg') or filePath.endswith('.png') or filePath.endswith('jpeg'):
 		output, pred = predict(model, filePath)
 		label = 'fake' if pred == 1 else 'real'
 		print('Model Evaluation: '+label)
-		return float([out.cpu().numpy() for out in output][1]) >= threshold
+		return output.cpu().data.numpy()[0][1] >= threshold
 
 
 def main():
 	
-	dataset = 'GAN'
+	dataset = 'faceForensics'
 	bSize = 10
 	model = Xception()
 	if torch.cuda.is_available():
 		model.cuda()
 	filePaths, tags = getDataset('dataset/', data=dataset)
-	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.001, epochs=3, data=dataset)
+	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.001, epochs=1, data=dataset)
 	'''
 
 	model = loadModel('faceForensics_model.pth')
