@@ -305,7 +305,7 @@ def saveModel(model, data):
 
 
 def predict(model, imagePath, postFunc=nn.Softmax(dim=1)):
-	img = processImage(imagePath)
+	img = processImages([imagePath])
 	output = model(img)
 	#output = postFunc(output)
 	print(output)
@@ -361,6 +361,7 @@ def getDataset(datasetPath, data):
 	return filePaths, tags
 
 def main():
+	'''
 	dataset = 'faceForensics'
 	bSize = 10
 	model = Xception()
@@ -383,8 +384,8 @@ def main():
 
 		label = 'fake' if pred == 1 else 'real'
 
-		#print('Image is '+label)
-		#print('Probability: '+str(prob))
+		print('Image is '+label)
+		print('Probability: '+str(prob))
 		if label == 'fake':
 			correct+=1
 
@@ -402,15 +403,15 @@ def main():
 
 		label = 'fake' if pred == 1 else 'real'
 
-		#print('Image is '+label)
-		#print('Probability: '+str(prob))
+		print('Image is '+label)
+		print('Probability: '+str(prob))
 		if label == 'real':
 			correct+=1
 
 	print('Real')
 	print(str(correct)+'/'+str(total))
 	print(correct/total)
-	'''
+	
 
 if __name__ == "__main__":
 	main()
