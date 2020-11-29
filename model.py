@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 import sys
 import os
+import shutil
 from torchvision import transforms
+from torch.autograd import Variable
 from torch import nn
 import torch.nn.functional as F
 import torch
@@ -9,6 +11,7 @@ from PIL import Image
 import cv2
 import dlib
 from videoToImages import convertVideoToImages
+from random import shuffle
 
 
 class SeparableConv2d(nn.Module):
@@ -184,138 +187,132 @@ def getFaceCrop(image):
 		return croppedFace
 
 
-def processImage(imagePath):
+def processImages(imagePaths):
 	#print("...processing image")
 	#print("Image: "+imagePath)
 	
-	img = cv2.imread(imagePath)
-	#img = getFaceCrop(img)
 	process = transforms.Compose([
 			transforms.Resize((299, 299)),
 			transforms.ToTensor(),
 			transforms.Normalize([0.5]*3, [0.5]*3)
 		])
-	processedImg = process(Image.fromarray(img))
-	processedImg = processedImg.unsqueeze(0)
+
+
+	images = Variable(torch.randn(len(imagePaths), 3, 299, 299).type(torch.FloatTensor), requires_grad=False)
+	for i,path in enumerate(imagePaths):
+		img = cv2.imread(path)
+		#img = getFaceCrop(img)
+		img = Image.fromarray(img)
+	
+		processedImg = process(img)
+		processedImg = processedImg.unsqueeze(0)
+		if torch.cuda.is_available():
+			processedImg = processedImg.cuda()
+
+		images[i] = processedImg
+	
 	if torch.cuda.is_available():
-		processedImg = processedImg.cuda()
-	return processedImg
+		images = images.cuda()
+	
+	return images
 
 
-def getOutput(model, imagePath, postFunc=nn.Softmax(dim=1)):
-	img = processImage(imagePath)
+def createBatch(dataList, batchSize):
+	for i in range(0, len(dataList), batchSize):
+		yield dataList[i:i+batchSize]
+
+def trainModel(model, batch, targets, optimizer, loss):
+	img = processImages(batch)
 	output = model(img)
-	output = postFunc(output)
-	print(output)
 
-	prob,ind = torch.max(output, 1)
-	pred = int(ind.cpu().numpy())
-	return output,pred
+	prob,_ = torch.max(output, 1)
 
+	targets = torch.LongTensor(targets)
+	if torch.cuda.is_available():
+		targets = targets.cuda()
 
-def trainFullNetwork(model, datasetPath, lr, epochs, faceForensics=False, personDoesNotExist=False, catDoesNotExist=False):
+	lossVal = loss(output,targets)
+	lossVal.backward()
+	optimizer.step()
+
+	print('Loss: '+str(lossVal.item()))
+	print('\n')
+
+def trainFullNetwork(model, filePaths, tags, batchSize, lr, epochs, data):
+
+	# create batch for GAN images
+	if data == 'GAN':
+		filePaths = list(createBatch(filePaths, batchSize))
+		tags = list(createBatch(tags, batchSize))
+
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 	loss = torch.nn.CrossEntropyLoss()
 	if torch.cuda.is_available():
 		loss = loss.cuda()
 
-	if datasetPath[-1] != '/':
-		datasetPath += '/'
-
 	for epoch in range(epochs):
-		for sequences in os.listdir(datasetPath):
-			if faceForensics and 'sequences' in sequences:
-				for faceTools in os.listdir(datasetPath+sequences):
-					for video in os.listdir(datasetPath+sequences+'/'+faceTools+'/c23/videos/'):
-						videoPath = datasetPath+sequences+'/'+faceTools+'/c23/videos/'+video
-						
-						imagesDir = videoPath.replace('videos', 'images')
-						imagesDir = imagesDir.replace('.mp4', '/')
+		print('Epoch: '+str(epoch))
+		if data == 'GAN':
+			for i in range(len(filePaths)):
+				batch = filePaths[i]
+				tagBatch = tags[i]
 
-						if not os.path.exists(imagesDir):
-							os.makedirs(imagesDir)
-							convertVideoToImages(videoPath, imagesDir)
+				trainModel(model, batch, tagBatch, optimizer, loss)
+		elif data == 'faceForensics':
+			for i in range(len(filePaths)):
+				path = filePaths[i]
+				target = tags[i]
 
-						for imagePath in os.listdir(imagesDir):
-							imagePath = imagesDir + imagePath
-							output, pred = getOutput(model, imagePath)
-							
-							target = 1 if 'manipulated' in sequences else 0
-							target = torch.LongTensor([target])
+				imagesDir = 'tempTrainingImages/'
 
-							if torch.cuda.is_available():
-								target = target.cuda()
-							
-							lossVal = loss(output,target)
-							lossVal.backward()
-							optimizer.step()
+				if not os.path.exists(imagesDir):
+					os.makedirs(imagesDir)
+				convertVideoToImages(path, imagesDir)
 
-							print('Epoch: '+str(epoch))
-							print('Loss: '+str(lossVal.item()))
-							print('\n')
+				batches = []
+				targets = []
+				for imagePath in os.listdir(imagesDir):
+					imagePath = imagesDir + imagePath
+					batches.append(imagePath)
+					targets.append(target)
+				
+				batches = list(createBatch(batches, batchSize))
+				targets = list(createBatch(targets, batchSize))
+				
+				for i in range(len(batches)):
+					batch = batches[i]
+					tagBatch = targets[i]
 
-							# delete image
-							os.remove(imagePath)
+					trainModel(model, batch, tagBatch, optimizer, loss)
 
-						# delete empty directory
-						os.rmdir(imagesDir)
-			elif personDoesNotExist and 'thispersondoesnotexist' in sequences:
-				for image in os.listdir(datasetPath+sequences):
-					imagePath = datasetPath+sequences+'/'+image
-					output, pred = getOutput(model, imagePath)
-							
-					target = 1
-					target = torch.LongTensor([target])
+				# delete images
+				shutil.rmtree(imagesDir)
 
-					if torch.cuda.is_available():
-						target = target.cuda()
-					
-					lossVal = loss(output,target)
-					lossVal.backward()
-					optimizer.step()
-
-					print('Epoch: '+str(epoch))
-					print('Loss: '+str(lossVal.item()))
-					print('\n')
-
-			elif catDoesNotExist and 'thiscatdoesnotexist' in sequences:
-				for image in os.listdir(datasetPath+sequences):
-					output, pred = getOutput(model, imagePath)
-							
-					target = 1
-					target = torch.LongTensor([target])
-
-					if torch.cuda.is_available():
-						target = target.cuda()
-					
-					lossVal = loss(output,target)
-					lossVal.backward()
-					optimizer.step()
-
-					print('Epoch: '+str(epoch))
-					print('Loss: '+str(lossVal.item()))
-					print('\n')
-
-		saveModel(model, faceForensics, personDoesNotExist, catDoesNotExist)
+		saveModel(model, data)
 
 
-def saveModel(model, faceForensics=False, personDoesNotExist=False, catDoesNotExist=False):
+def saveModel(model, data):
 	# save model
 	modelPath = ''
-	if faceForensics:
-		modelPath += 'faceForensics'
-	if personDoesNotExist:
-		if modelPath == '':
-			modelPath += '_'
-		modelPath += 'personDoesNotExist'
-	if catDoesNotExist:
-		if modelPath == '':
-			modelPath += '_'
-		modelPath += 'catDoesNotExist'
+	if data == 'faceForensics':
+		modelPath = 'faceForensics'
+	elif data == 'GAN':
+		modelPath += 'GAN'
 	modelPath += '_model.pth'
 
 	torch.save(model.state_dict(), modelPath)
+	print('Model successfully saved!\n\n')
 
+
+def predict(model, imagePath, postFunc=nn.Softmax(dim=1)):
+	img = processImage(imagePath)
+	output = model(img)
+	#output = postFunc(output)
+	print(output)
+
+	prob,ind = torch.max(output, 1)
+	pred = int(ind.cpu().numpy())
+	return output,pred
 
 
 def loadModel(modelPath):
@@ -329,12 +326,48 @@ def loadModel(modelPath):
 	model.load_state_dict(torch.load(modelPath, torch.device(device)))
 	return model
 
+
+def getDataset(datasetPath, data):
+	filePaths = []
+	tags = []
+	if datasetPath[-1] != '/':
+		datasetPath += '/'
+	for sequences in os.listdir(datasetPath):
+		if data == 'faceForensics' and 'sequences' in sequences:
+			for faceTools in os.listdir(datasetPath+sequences):
+				for video in os.listdir(datasetPath+sequences+'/'+faceTools+'/c23/videos/'):
+					videoPath = datasetPath+sequences+'/'+faceTools+'/c23/videos/'+video
+					filePaths.append(videoPath)
+					if 'original' in videoPath:
+						tags.append(0)
+					elif 'manipulated' in videoPath:
+						tags.append(1)
+
+		elif data == 'GAN' and 'GAN' in sequences:
+			for tag in os.listdir(datasetPath+sequences):
+				for imagePath in os.listdir(datasetPath+sequences+'/'+tag):
+					imagePath = datasetPath+sequences+'/'+tag+'/'+imagePath
+					filePaths.append(imagePath)
+					if 'real' in tag:
+						tags.append(0)
+					elif 'fake' in tag:
+						tags.append(1)
+	
+	# shuffle data
+	temp = list(zip(filePaths, tags))
+	shuffle(temp)
+	filePaths, tags = zip(*temp)
+
+	return filePaths, tags
+
 def main():
-	'''
+	dataset = 'faceForensics'
+	bSize = 10
 	model = Xception()
 	if torch.cuda.is_available():
 		model.cuda()
-	trainFullNetwork(model, 'dataset/', lr=0.05, epochs=3, faceForensics=True)
+	filePaths, tags = getDataset('dataset/', data=dataset)
+	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.05, epochs=3, data=dataset)
 	'''
 
 	convertVideoToImages('fake.mp4', 'fake/')
@@ -345,7 +378,7 @@ def main():
 	total = len(os.listdir('fake/'))
 	for img in os.listdir('fake/'):
 		img = 'fake/'+img
-		prob,pred = getOutput(model, img)
+		prob,pred = predict(model, img)
 		os.remove(img)
 
 		label = 'fake' if pred == 1 else 'real'
@@ -364,7 +397,7 @@ def main():
 	total = len(os.listdir('real/'))
 	for img in os.listdir('real/'):
 		img = 'real/'+img
-		prob,pred = getOutput(model, img)
+		prob,pred = predict(model, img)
 		os.remove(img)
 
 		label = 'fake' if pred == 1 else 'real'
@@ -377,7 +410,7 @@ def main():
 	print('Real')
 	print(str(correct)+'/'+str(total))
 	print(correct/total)
-	
+	'''
 
 if __name__ == "__main__":
 	main()
