@@ -1,0 +1,6 @@
+{
+	"batchSize": 3,
+	"learningRate": 0.00001,
+	"weightDecay": 0.05,
+	"epochs": 10
+}
