@@ -256,7 +256,7 @@ def trainFullNetwork(model, allFilePaths, allTags, batchSize, lr, wd, epochs, da
 	loss = torch.nn.CrossEntropyLoss()
 	if torch.cuda.is_available():
 		loss = loss.cuda()
-	
+
 	model.train()
 	for epoch in range(epochs):
 		# shuffle data
@@ -374,7 +374,7 @@ def getDataset(datasetPath, data):
 	return filePaths, tags
 
 
-def testModel(model, filePath, tag, threshold=0.5):
+def testModel(model, filePath, tag):
 	model.eval()
 	if filePath.endswith('.mp4') or filePath.endswith('.avi'):
 		imagesDir = 'tempTestingImages/'
@@ -396,18 +396,54 @@ def testModel(model, filePath, tag, threshold=0.5):
 				prob.append(fakeProb)
 		shutil.rmtree(imagesDir)
 		print('Correct: '+str(correct)+'/'+str(total))
-		if len(prob) > 0:
-			acc = sum(prob)/len(prob)
+		if correct/total > 0.5:
+			ans = tag
 		else:
-			acc = 0
-		return acc > threshold
+			if tag == 1:
+				ans = 0
+			else:
+				ans = 0
+		return ans
 
 	elif filePath.endswith('.jpg') or filePath.endswith('.png') or filePath.endswith('jpeg'):
 		output, pred = predict(model, filePath)
 		label = 'fake' if pred == 1 else 'real'
 		#print(output)
 		print('Model Evaluation: '+label)
-		return output.cpu().data.numpy()[0][1] > threshold
+		return pred
+
+
+def testFullDataset(model, allFilePaths, allTags):
+	TP = 0
+	TN = 0
+	FP = 0
+	FN = 0
+
+	for i in range(len(allFilePaths)):
+		path = allFilePaths[i]
+		tag = allTags[i]
+		res = testModel(model, path, tag)
+
+		if tag == 1 and res == 1:
+			TP += 1
+		elif tag == 1 and res == 0:
+			FN += 1
+		elif tag == 0 and res == 0:
+			TN += 1
+		elif tag == 0 and res == 1:
+			FP += 1
+
+	accuracy = (TP+TN)/(TP+TN+FP+FN)
+	precision = (TP)/(TP+FP)
+	recall = (TP)/(TP+FN)
+	f1 = (2*precision*recall)/(precision+recall)
+
+	print('**************************')
+	print('Accuracy: '+str(accuracy))
+	print('Precision: '+str(precision))
+	print('Recall: '+str(recall))
+	print('F1 score: '+str(f1))
+	print('**************************')
 
 
 def getResnetModel(modelPath=None):
@@ -426,24 +462,35 @@ def getResnetModel(modelPath=None):
 
 def main():
 	
-	dataset = 'faceForensics'
-	bSize = 10
+	dataset = 'GAN'
+	bSize = 3
 	#model = Xception()
 	model = getResnetModel()
 	if torch.cuda.is_available():
 		model.cuda()
 	filePaths, tags = getDataset('dataset/', data=dataset)
-	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.001, wd=0.05, epochs=1, data=dataset)
+	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.00001, wd=0.05, epochs=10, data=dataset)
 	'''
 
 	#model = loadModel('faceForensics_Xception.pth')
-	model = getResnetModel('faceForensics_ResNet.pth')
+	#model = getResnetModel('GAN_ResNet.pth')
+	model = loadModel('GAN_Xception.pth')
 
-	testModel(model, 'fake.mp4', 1)
-	print('\n\n\n')
-	testModel(model, 'real.mp4', 0)
-	'''
+	#testModel(model, 'dataset/GAN/fake_thispersondoesnotexist/11.jpeg', 1)
+	#print('\n\n\n')
+	#testModel(model, 'dataset/GAN/real/real_00043.jpg', 0)
+	correct = 0
+	for path in os.listdir('GAN-extra/'):
+		path = 'GAN-extra/'+path
+		res = testModel(model, path, 1)
+		print('')
+		if res == 1:
+			correct+=1
+	print('Correct: '+str(correct))
 	
+	#filePaths, tags = getDataset('dataset/', data='GAN')
+	#testFullDataset(model, filePaths, tags)
+	'''
 	
 
 if __name__ == "__main__":
