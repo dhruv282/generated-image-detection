@@ -43,7 +43,7 @@ To accurately test these GAN images against real images, we used an additional d
 For training the model, run `model.py` as shown below:
 
 ```bash
-$ python3 model.py train \<modelType\> \<datasetType\> \<datasetPath\>
+$ python3 model.py train <modelType> <datasetType> <datasetPath>
 ```
 
 `modelType` options include `XceptionNet` and `ResNet`
@@ -66,7 +66,7 @@ The model will automatically be saved on local memory as a `.pth` file once trai
 For testing the model, run `model.py` as shown below:
 
 ```bash
-$ python3 model.py test \<modelType\> \<datasetType\> \<datasetPath\> \<modelPath\>
+$ python3 model.py test <modelType> <datasetType> <datasetPath\> <modelPath>
 ```
 
 `modelType` options include `XceptionNet` and `ResNet`
