@@ -2,6 +2,7 @@
 import sys
 import os
 import shutil
+import json
 from torchvision import transforms
 from torch.autograd import Variable
 from torch import nn
@@ -461,36 +462,85 @@ def getResnetModel(modelPath=None):
 	return model
 
 def main():
-	
-	dataset = 'GAN'
-	bSize = 3
-	#model = Xception()
-	model = getResnetModel()
-	if torch.cuda.is_available():
-		model.cuda()
-	filePaths, tags = getDataset('dataset/', data=dataset)
-	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.00001, wd=0.05, epochs=10, data=dataset)
-	'''
+	if len(sys.argv) >= 4:
+		modelType = sys.argv[2]
 
-	#model = loadModel('faceForensics_Xception.pth')
-	#model = getResnetModel('GAN_ResNet.pth')
-	model = loadModel('GAN_Xception.pth')
+		# determine dataset
+		datasetType = sys.argv[3]
 
-	#testModel(model, 'dataset/GAN/fake_thispersondoesnotexist/11.jpeg', 1)
-	#print('\n\n\n')
-	#testModel(model, 'dataset/GAN/real/real_00043.jpg', 0)
-	correct = 0
-	for path in os.listdir('GAN-extra/'):
-		path = 'GAN-extra/'+path
-		res = testModel(model, path, 1)
-		print('')
-		if res == 1:
-			correct+=1
-	print('Correct: '+str(correct))
-	
-	#filePaths, tags = getDataset('dataset/', data='GAN')
-	#testFullDataset(model, filePaths, tags)
-	'''
+		if datasetType != 'faceForensics' or datasetType != 'GAN':
+			print('Dataset Type no supported: '+datasetType)
+			sys.exit()
+		
+		# determine dataset path
+		datasetPath = sys.argv[4]
+		filePaths, tags = getDataset(datasetPath, data=datasetType)
+
+		if len(filePaths) == 0:
+			print('Invalid Dataset path: '+datasetPath)
+			sys.exit()
+
+		# determine train or test the model
+		if sys.argv[1] == 'train':
+			# initialize model
+			if modelType == 'XceptionNet':
+				model = Xception()
+				if torch.cuda.is_available():
+					model.cuda()
+			elif modelType == 'ResNet':
+				model = getResnetModel()
+			else:
+				print('Model not supported: '+modelType)
+				sys.exit()
+
+			# read training parameters from config
+			trainConfigPath = 'trainConfig.json'
+			file = open(trainConfigPath, 'r')
+			jsonFile = json.loads(file.read())
+			file.close()
+
+			bSize = jsonFile['batchSize']
+			lr = jsonFile['learningRate']
+			weightDecay = jsonFile['weightDecay']
+			epochs = jsonFile['epochs']
+
+			# train model
+			trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=lr, wd=weightDecay, epochs=epochs, data=dataset)
+
+		elif sys.argv[1] == 'test':
+			# get model path
+			if sys.argv[5]:
+				modelPath = sys.argv[5]
+			else:
+				print('No model path specified')
+				sys.exit()
+
+			# load model
+			if modelType == 'XceptionNet':
+				model = loadModel(modelPath)
+				if torch.cuda.is_available():
+					model.cuda()
+			elif modelType == 'ResNet':
+				model = getResnetModel(modelPath)
+			else:
+				print('Model not supported: '+modelType)
+				sys.exit()
+
+			# test model
+			testFullDataset(model, filePaths, tags)
+		else:
+			print('Invalid Argument: '+sys.argv[1])
+			sys.exit()
+	else:
+		print('Training Usage:')
+		print(sys.argv[0]+' train <modelType> <datasetType> <datasetPath>')
+		print('	batchSize, learningRate, weightDecay, and epochs can be adjusted in trainConfig.json')
+		print('\nTesting Usage:')
+		print(sys.argv[0]+' test <modelType> <datasetType> <datasetPath> <modelPath>')
+		print('\nArgument Options:')
+		print('<modelType>: XceptionNet, ResNet')
+		print('<datasetType>: faceForensics, GAN')
+		sys.exit()	
 	
 
 if __name__ == "__main__":
