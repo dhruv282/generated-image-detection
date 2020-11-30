@@ -8,7 +8,7 @@ import hashlib
 
 #NUM_OF_IMAGES_TO_FETCH = 200
 URLS = ["https://thispersondoesnotexist.com/image"]
-DATASET_PATH = "dataset/"
+DATASET_PATH = "dataset/GAN/fake_thispersondoesnotexist/"
 
 def fetchImages(url, numImages, datasetPath):
 	for x in range(numImages):
@@ -44,8 +44,8 @@ def main():
 		sys.exit()
 
 	for url in URLS:
-		path = DATASET_PATH+str(getHash(url))+'/'
-
+		#path = DATASET_PATH+str(getHash(url))+'/'
+		path = DATASET_PATH
 		if not os.path.exists(path):
 			os.makedirs(path)
 

@@ -33,6 +33,51 @@ To accurately test these GAN images against real images, we used an additional d
 * `videoToImages.py`
   * The code in this file is intended to be called by `model.py` so that the video that is currently being evaluated can be converted into images.
 * `model.py`
-  * This is the actual XceptionNet model. Instructions can be found under [Using the Pre-trained Model](#using-the-pre-trained-model)
+  * This file contains the XceptionNet model implementation, training, and testing modules. Instructions can be found under [Using the Model](#using-the-model)
+* `trainConfig.json`
+  * This is a configuration file for specifying the training hyperparameters. Adjust values as needed.
 
-### Using the Pre-trained Model
+### Using the Model
+
+#### Training
+For training the model, run `model.py` as shown below:
+
+```bash
+$ python3 model.py train \<modelType\> \<datasetType\> \<datasetPath\>
+```
+
+`modelType` options include `XceptionNet` and `ResNet`
+`datasetType` options include `faceForensics` and `GAN`
+`datasetPath` is used to specify the path to the training dataset
+
+Example:
+
+```bash
+$ python3 model.py train XceptionNet faceForensics dataset/
+```
+
+Training hyperparameters such as batch size, learning rate, weight decay, and epochs can be adjusted in `trainConfig.json`.
+
+The model will automatically be saved on local memory as a `.pth` file once training is completed
+
+
+#### Testing
+
+For testing the model, run `model.py` as shown below:
+
+```bash
+$ python3 model.py test \<modelType\> \<datasetType\> \<datasetPath\> \<modelPath\>
+```
+
+`modelType` options include `XceptionNet` and `ResNet`
+`datasetType` options include `faceForensics` and `GAN`
+`datasetPath` is used to specify the path to the testing dataset
+`modelPath` is used to specify the path of the trained model
+
+Example:
+
+```bash
+$ python3 model.py test XceptionNet faceForensics dataset/ faceForensics_XceptionNet.pth
+```
+
+Evaluations such as accuracy, precision, recall, and F1 score will be computed and printed once testing is completed
