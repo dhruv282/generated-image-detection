@@ -230,6 +230,7 @@ def createBatch(dataList, batchSize):
 
 def trainModel(model, batch, targets, optimizer, loss, postFunc=nn.Softmax(dim=1)):
 	img = processImages(batch)
+	optimizer.zero_grad()
 	output = model(img)
 	output = postFunc(output)
 	print(output)
@@ -242,7 +243,6 @@ def trainModel(model, batch, targets, optimizer, loss, postFunc=nn.Softmax(dim=1
 		targets = targets.cuda()
 	print(targets)
 
-	optimizer.zero_grad()
 	lossVal = loss(output,targets)
 	lossVal.backward()
 	optimizer.step()
@@ -251,13 +251,13 @@ def trainModel(model, batch, targets, optimizer, loss, postFunc=nn.Softmax(dim=1
 	print('\n')
 	return model
 
-def trainFullNetwork(model, allFilePaths, allTags, batchSize, lr, epochs, data):
-	model.train()
-	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+def trainFullNetwork(model, allFilePaths, allTags, batchSize, lr, wd, epochs, data):
+	optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 	loss = torch.nn.CrossEntropyLoss()
 	if torch.cuda.is_available():
 		loss = loss.cuda()
-
+	
+	model.train()
 	for epoch in range(epochs):
 		# shuffle data
 		allFilePaths, allTags = shuffleData(allFilePaths, allTags)		
@@ -405,6 +405,7 @@ def testModel(model, filePath, tag, threshold=0.5):
 	elif filePath.endswith('.jpg') or filePath.endswith('.png') or filePath.endswith('jpeg'):
 		output, pred = predict(model, filePath)
 		label = 'fake' if pred == 1 else 'real'
+		#print(output)
 		print('Model Evaluation: '+label)
 		return output.cpu().data.numpy()[0][1] > threshold
 
@@ -426,17 +427,17 @@ def getResnetModel(modelPath=None):
 def main():
 	
 	dataset = 'faceForensics'
-	bSize = 5
+	bSize = 10
 	#model = Xception()
 	model = getResnetModel()
 	if torch.cuda.is_available():
 		model.cuda()
 	filePaths, tags = getDataset('dataset/', data=dataset)
-	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.001, epochs=1, data=dataset)
+	trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=0.001, wd=0.05, epochs=1, data=dataset)
 	'''
 
-	#model = loadModel('faceForensics_model.pth')
-	model = getResnetModel()
+	#model = loadModel('faceForensics_Xception.pth')
+	model = getResnetModel('faceForensics_ResNet.pth')
 
 	testModel(model, 'fake.mp4', 1)
 	print('\n\n\n')
