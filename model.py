@@ -468,8 +468,8 @@ def main():
 		# determine dataset
 		datasetType = sys.argv[3]
 
-		if datasetType != 'faceForensics' or datasetType != 'GAN':
-			print('Dataset Type no supported: '+datasetType)
+		if datasetType != 'faceForensics' and datasetType != 'GAN':
+			print('Dataset Type not supported: '+datasetType)
 			sys.exit()
 		
 		# determine dataset path
@@ -505,7 +505,7 @@ def main():
 			epochs = jsonFile['epochs']
 
 			# train model
-			trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=lr, wd=weightDecay, epochs=epochs, data=dataset)
+			trainFullNetwork(model, filePaths, tags, batchSize=bSize, lr=lr, wd=weightDecay, epochs=epochs, data=datasetType)
 
 		elif sys.argv[1] == 'test':
 			# get model path
