@@ -14,7 +14,7 @@ The FaceForensics++ dataset is an extensive dataset of original YouTube videos, 
 
 #### Generating Frames from Videos
 
-Video classification involves looking at each frame within the video individually, meaning that what is classified is a series of images. We implemented a Python script to take the dataset videos one at a time and convert them into frames using ffmpeg. The video frames are created with the naming convention <original video name>-<frame number>.jpg. Immediately after training the model with all the frames from a video, the frames are deleted to save space.
+Video classification involves looking at each frame within the video individually, meaning that what is classified is a series of images. We implemented a Python script to take the dataset videos one at a time and convert them into frames using ffmpeg. The video frames are created with the naming convention \<original video name\>-\<frame number\>.jpg. Immediately after training the model with all the frames from a video, the frames are deleted to save space.
 
 ### GAN Image Dataset - [thispersondoesnotexist.com](https://thispersondoesnotexist.com/)
 
