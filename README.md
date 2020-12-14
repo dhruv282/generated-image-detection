@@ -83,3 +83,41 @@ $ python3 model.py test XceptionNet faceForensics dataset/ faceForensics_Xceptio
 ```
 
 Evaluations such as accuracy, precision, recall, and F1 score will be computed and printed once testing is completed
+
+
+#### Dataset Structure
+
+`sampleDatasetStructure` provided to show how the dataset is structured. The tree below shows the structure of this directory. The FaceForensics++ dataset is made up of `manipulated_sequences` and `original_sequences`.
+
+```
+sampleDatasetStructure
+├── GAN
+│   ├── fake_thispersondoesnotexist
+│   └── real
+├── manipulated_sequences
+│   ├── DeepFakeDetection
+│   │   └── c23
+│   │       └── videos
+│   ├── Deepfakes
+│   │   └── c23
+│   │       └── videos
+│   ├── Face2Face
+│   │   └── c23
+│   │       └── videos
+│   ├── FaceShifter
+│   │   └── c23
+│   │       └── videos
+│   ├── FaceSwap
+│   │   └── c23
+│   │       └── videos
+│   └── NeuralTextures
+│       └── c23
+│           └── videos
+└── original_sequences
+    ├── actors
+    │   └── c23
+    │       └── videos
+    └── youtube
+        └── c23
+            └── videos
+```
