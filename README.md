@@ -10,7 +10,7 @@ Synthetic image generation is becoming more advanced to the point where it is be
 
 ### FaceForensics Dataset
 
-The FaceForensics++ dataset is an extensive dataset of original YouTube videos, original actor videos, and altered versions of those videos. The entire dataset requires 1.6TB of storage space. Due to the large size of the dataset, we have opted to use a subset. For our training dataset... <to be filled in>. For the testing dataset, we used a very small subset. We used 10 original YouTube videos as well as those same videos altered with each of the 5 manipulation methods, totaling 60 videos. Additionally, we used 10 original actor videos and those same 10 videos altered with DeepFakes for another 20 videos. In total, our testing dataset consisted of 80 videos.
+The FaceForensics++ dataset is an extensive dataset of original YouTube videos, original actor videos, and altered versions of those videos. The entire dataset requires 1.6TB of storage space. Due to the large size of the dataset, we have opted to use a subset. For training, we used a total of 1000 videos. 200 original Youtube videos, 100 of the YouTube videos altered with the different methods for a total of 500 altered videos, 200 original actor videos, and 100 of those actor videos altered with DeepFakes. Altogether, the training dataset had 700 real and fake YouTube videos and 300 real and fake actor videos. For the testing dataset, we used the same video distribution as for the training dataset but only one tenth the amount of videos. Meaning that we used 20 original Youtube videos, 10 of the YouTube videos altered with the different methods for a total of 50 altered videos, 20 original actor videos, and 10 of those actor videos altered with DeepFakes. Altogether, the training dataset had 70 real and fake YouTube videos and 30 real and fake actor videos for a total of 100 videos.
 
 #### Generating Frames from Videos
 
@@ -18,9 +18,11 @@ Video classification involves looking at each frame within the video individuall
 
 ### GAN Image Dataset - [thispersondoesnotexist.com](https://thispersondoesnotexist.com/)
 
-We collected our own dataset of GAN generated images by downloading 200 images from thispersondoesnotexist.com. The website thispersondoesnotexist.com generates a completely new image of a person every time the web page is loaded. The images are created using the style-based GAN architecture StyleGAN.
+We collected our own dataset of GAN generated images by downloading 1500 images from thispersondoesnotexist.com. The website thispersondoesnotexist.com generates a completely new image of a person every time the web page is loaded. The images are created using the style-based GAN architecture StyleGAN.
 
-To accurately test these GAN images against real images, we used an additional dataset of real images that were cropped in a similar fashion to the GAN images. The dataset is from [kaggle.com](https://www.kaggle.com/ciplab/real-and-fake-face-detection).
+To accurately test these GAN images against real images, we used additional datasets of real images that were cropped in a similar fashion to the GAN images. The datasets are from [kaggle.com](https://www.kaggle.com/ciplab/real-and-fake-face-detection) and [NVlabs](https://github.com/NVlabs/ffhq-dataset).
+
+Our training dataset included 1000 GAN images from thispersondoesnotexist.com, 800 real images from the Real and Fake Face Detection dataset, and 200 real images from NVlabs for a total of 2000 training images. For testing, we used 500 GAN Images, 250 from the Real and Fake Face Detection dataset, and 250 from NVlabs for a total of 1000 testing images.
 
 ## Usage
 
