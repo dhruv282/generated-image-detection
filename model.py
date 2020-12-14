@@ -12,10 +12,12 @@ import torch
 from PIL import Image
 import cv2
 import dlib
-from videoToImages import convertVideoToImages
+from videoToImages import processAllVideos
 from random import shuffle
 
-
+'''
+Separable 2D convolutional layer implementation
+'''
 class SeparableConv2d(nn.Module):
 	def __init__(self,in_channels,out_channels,kernel_size=1,stride=1,padding=0,dilation=1,bias=False):
 		super(SeparableConv2d,self).__init__()
@@ -28,7 +30,9 @@ class SeparableConv2d(nn.Module):
 		x = self.pointwise(x)
 		return x
 
-
+'''
+Convolutional layer implementation
+'''
 class Block(nn.Module):
 	def __init__(self,in_filters,out_filters,reps,strides=1,start_with_relu=True,grow_first=True):
 		super(Block, self).__init__()
@@ -80,7 +84,9 @@ class Block(nn.Module):
 		x+=skip
 		return x
 
-
+'''
+XceptionNet Model implementation
+'''
 class Xception(nn.Module):
 	def __init__(self, num_classes=2):
 		super(Xception, self).__init__()
@@ -162,6 +168,9 @@ class Xception(nn.Module):
 		x = self.logits(x)
 		return x
 
+'''
+Function to get face crop from given image
+'''
 def getFaceCrop(image):
 	detector = dlib.get_frontal_face_detector()
 	faces = detector(image, 1)
@@ -188,7 +197,9 @@ def getFaceCrop(image):
 
 		return croppedFace
 
-
+'''
+Function rescale given images and convert to PyTorch Tensor
+'''
 def processImages(imagePaths):
 	#print("...processing image")
 	#print("Image: "+imagePath)
@@ -219,16 +230,28 @@ def processImages(imagePaths):
 	return images
 
 
+'''
+Function to shuffle given data
+	- data and tag are zipped together before shuffle to avoid losing correct labels
+'''
 def shuffleData(data, tag):
 	temp = list(zip(data, tag))
 	shuffle(temp)
 	data, tag = zip(*temp)
 	return list(data), list(tag)
 
+
+'''
+Function to create batches of specified batch size from given data
+'''
 def createBatch(dataList, batchSize):
 	for i in range(0, len(dataList), batchSize):
 		yield dataList[i:i+batchSize]
 
+
+'''
+Function to train given batch of images
+'''
 def trainModel(model, batch, targets, optimizer, loss, postFunc=nn.Softmax(dim=1)):
 	img = processImages(batch)
 	optimizer.zero_grad()
@@ -252,6 +275,10 @@ def trainModel(model, batch, targets, optimizer, loss, postFunc=nn.Softmax(dim=1
 	print('\n')
 	return model
 
+
+'''
+Function to train full dataset and output training progress
+'''
 def trainFullNetwork(model, allFilePaths, allTags, batchSize, lr, wd, epochs, data):
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 	loss = torch.nn.CrossEntropyLoss()
@@ -263,8 +290,9 @@ def trainFullNetwork(model, allFilePaths, allTags, batchSize, lr, wd, epochs, da
 		# shuffle data
 		allFilePaths, allTags = shuffleData(allFilePaths, allTags)		
 
-		print('Epoch: '+str(epoch))
-		if data == 'GAN':
+		#print('Epoch: '+str(epoch))
+		#if data == 'GAN':
+		if data == 'GAN' or data == 'faceForensics':
 
 			filePaths = list(createBatch(allFilePaths, batchSize))
 			tags = list(createBatch(allTags, batchSize))
@@ -274,39 +302,20 @@ def trainFullNetwork(model, allFilePaths, allTags, batchSize, lr, wd, epochs, da
 				tagBatch = tags[i]
 
 				model = trainModel(model, batch, tagBatch, optimizer, loss)
-		elif data == 'faceForensics':
-			for i in range(len(allFilePaths)):
-				path = allFilePaths[i]
-				target = allTags[i]
-
-				imagesDir = 'tempTrainingImages/'
-
-				if not os.path.exists(imagesDir):
-					os.makedirs(imagesDir)
-				convertVideoToImages(path, imagesDir)
-
-				batches = []
-				targets = []
-				for imagePath in os.listdir(imagesDir):
-					imagePath = imagesDir + imagePath
-					batches.append(imagePath)
-					targets.append(target)
-				
-				batches = list(createBatch(batches, batchSize))
-				targets = list(createBatch(targets, batchSize))
-				
-				for i in range(len(batches)):
-					batch = batches[i]
-					tagBatch = targets[i]
-
-					model = trainModel(model, batch, tagBatch, optimizer, loss)
-
-				# delete images
-				shutil.rmtree(imagesDir)
+				print('**************************************')
+				print('Epoch: '+str(epoch))
+				print('Progress: '+str(i)+'/'+str(len(filePaths)) + ' ('+str(round(100*(i/len(filePaths)), 2))+'%)')
+				print('--------------------------------------')
+				print('\nCompleted batch: ')
+				for i in batch:
+					print(i)
+				print('**************************************')
 
 		saveModel(model, data)
 
-
+'''
+Function to save given model as .pth file
+'''
 def saveModel(model, data):
 	# save model
 	modelPath = ''
@@ -314,12 +323,15 @@ def saveModel(model, data):
 		modelPath = 'faceForensics'
 	elif data == 'GAN':
 		modelPath += 'GAN'
-	modelPath += '_'+model.__class__.__name__+'.pth'
+	modelPath += '_'+model.__class__.__name__+'_datasetImg.pth'
 
 	torch.save(model.state_dict(), modelPath)
 	print('Model successfully saved!\n\n')
 
 
+'''
+Function to evaluate outcome of given image
+'''
 def predict(model, imagePath, postFunc=nn.Softmax(dim=1)):
 	img = processImages([imagePath])
 	output = model(img)
@@ -331,6 +343,9 @@ def predict(model, imagePath, postFunc=nn.Softmax(dim=1)):
 	return output,pred
 
 
+'''
+Function to load XceptionNet model from .pth file
+'''
 def loadModel(modelPath):
 	model = Xception()
 
@@ -343,6 +358,9 @@ def loadModel(modelPath):
 	return model
 
 
+'''
+Function to process specified type of dataset
+'''
 def getDataset(datasetPath, data):
 	filePaths = []
 	tags = []
@@ -350,14 +368,18 @@ def getDataset(datasetPath, data):
 		datasetPath += '/'
 	for sequences in os.listdir(datasetPath):
 		if data == 'faceForensics' and 'sequences' in sequences:
+			processAllVideos(datasetPath)
 			for faceTools in os.listdir(datasetPath+sequences):
-				for video in os.listdir(datasetPath+sequences+'/'+faceTools+'/c23/videos/'):
-					videoPath = datasetPath+sequences+'/'+faceTools+'/c23/videos/'+video
-					filePaths.append(videoPath)
-					if 'original' in videoPath:
-						tags.append(0)
-					elif 'manipulated' in videoPath:
-						tags.append(1)
+				for video in os.listdir(datasetPath+sequences+'/'+faceTools+'/c23/images/'):
+					path = datasetPath+sequences+'/'+faceTools+'/c23/images/'+video
+					for v in os.listdir(path):
+						imgPath = path +'/'+v
+						print(imgPath)
+						filePaths.append(imgPath)
+						if 'original' in imgPath:
+							tags.append(0)
+						elif 'manipulated' in imgPath:
+							tags.append(1)
 
 		elif data == 'GAN' and 'GAN' in sequences:
 			for tag in os.listdir(datasetPath+sequences):
@@ -375,6 +397,9 @@ def getDataset(datasetPath, data):
 	return filePaths, tags
 
 
+'''
+Function to test given image or video
+'''
 def testModel(model, filePath, tag):
 	model.eval()
 	if filePath.endswith('.mp4') or filePath.endswith('.avi'):
@@ -391,10 +416,14 @@ def testModel(model, filePath, tag):
 			label = 'fake' if pred == 1 else 'real'
 			if pred == tag:
 				correct += 1
-			#print(label)
+			print("----------------------------------")
+			print('Model Evaluation: '+label)
+			if tag == 0:
+				print('Actual: real')
+			else:
+				print('Actual: fake')
+			print("----------------------------------")
 			fakeProb = output.cpu().data.numpy()[0][1]
-			if fakeProb > threshold:
-				prob.append(fakeProb)
 		shutil.rmtree(imagesDir)
 		print('Correct: '+str(correct)+'/'+str(total))
 		if correct/total > 0.5:
@@ -410,10 +439,19 @@ def testModel(model, filePath, tag):
 		output, pred = predict(model, filePath)
 		label = 'fake' if pred == 1 else 'real'
 		#print(output)
+		print("----------------------------------")
 		print('Model Evaluation: '+label)
+		if tag == 0:
+			print('Actual: real')
+		else:
+			print('Actual: fake')
+		print("----------------------------------")
 		return pred
 
 
+'''
+Function to test full dataset and output progress
+'''
 def testFullDataset(model, allFilePaths, allTags):
 	TP = 0
 	TN = 0
@@ -433,6 +471,9 @@ def testFullDataset(model, allFilePaths, allTags):
 			TN += 1
 		elif tag == 0 and res == 1:
 			FP += 1
+		
+		print('Progress: '+str(i)+'/'+str(len(allFilePaths)) + ' ('+str(round(100*(i/len(allFilePaths)), 2))+'%)')
+		print("************************************************************")
 
 	accuracy = (TP+TN)/(TP+TN+FP+FN)
 	precision = (TP)/(TP+FP)
@@ -447,6 +488,9 @@ def testFullDataset(model, allFilePaths, allTags):
 	print('**************************')
 
 
+'''
+Function to load ResNet-18 model from .pth file
+'''
 def getResnetModel(modelPath=None):
 	model = models.resnet18()
 	inFeatures = model.fc.in_features
@@ -532,6 +576,7 @@ def main():
 			print('Invalid Argument: '+sys.argv[1])
 			sys.exit()
 	else:
+		# print usage info
 		print('Training Usage:')
 		print(sys.argv[0]+' train <modelType> <datasetType> <datasetPath>')
 		print('	batchSize, learningRate, weightDecay, and epochs can be adjusted in trainConfig.json')

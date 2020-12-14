@@ -2,7 +2,6 @@
 import sys
 import os
 import subprocess
-import cv2
 
 def convertVideoToImages(videoPath, imagesDir):
 	print("...converting video to images")
@@ -11,7 +10,7 @@ def convertVideoToImages(videoPath, imagesDir):
 	
 	if imagesDir[-1] != '/':
 		imagesDir += '/'
-	'''
+	
 	imageNames = imagesDir+videoPath.split('/')[-1].replace('.mp4', '') + '-%d.jpg'
 	
 	conv = subprocess.run(['ffmpeg', '-i', videoPath, imageNames, '-hide_banner', '-loglevel', 'panic'])
@@ -21,25 +20,6 @@ def convertVideoToImages(videoPath, imagesDir):
 		print("Images stored in: " + imagesDir)
 	else:
 		print("Error: Something went wrong :(")
-	'''
-	videoCap = cv2.VideoCapture(videoPath)
-	imageNames = imagesDir+videoPath.split('/')[-1].replace('.mp4', '') + '-'
-	def getFrame(sec):
-		videoCap.set(cv2.CAP_PROP_POS_MSEC,sec*1000)
-		hasFrames,image = videoCap.read()
-		if hasFrames:
-			cv2.imwrite(imageNames+str(count)+'.jpg', image)
-		return hasFrames
-
-	sec = 0
-	frameRate = 0.033
-	count = 1
-	success = getFrame(sec)
-	while success:
-		count += 1
-		sec += frameRate
-		sec = round(sec, 2)
-		success = getFrame(sec)
 	
 
 
