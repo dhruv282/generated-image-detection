@@ -38,6 +38,8 @@ Our training dataset included 1000 GAN images from thispersondoesnotexist.com, 8
   * This file contains the XceptionNet model implementation, training, and testing modules. Instructions can be found under [Using the Model](#using-the-model)
 * `trainConfig.json`
   * This is a configuration file for specifying the training hyperparameters. Adjust values as needed.
+* `requirements.txt`
+  * This file contains packages needed to train and/or test the model. Run `pip install -r requirements.txt` to install these dependencies.
 
 ### Using the Model
 
